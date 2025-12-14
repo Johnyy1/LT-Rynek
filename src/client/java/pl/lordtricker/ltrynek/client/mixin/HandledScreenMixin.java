@@ -69,7 +69,7 @@ public abstract class HandledScreenMixin {
 	}
 
 private static final Pattern NEWER_PATTERN = Pattern.compile(
-    "(?:§[0-9a-fk-or])*([A-Za-z_]+)(?:\\s+(I|II|III|IV|V|VI|[1-6]))?",
+    "(?:§[0-9a-fk-or])*([A-Za-z_]+)(?:\\s+(I|II|III|IV|V|VI))?",
     Pattern.CASE_INSENSITIVE
 );
 
@@ -102,25 +102,20 @@ private static final Pattern NEWER_PATTERN = Pattern.compile(
 		boolean foundAny = false;
 
 while (enchantMatcherNew.find()) {
-    foundAny = true;
+    String enchId = enchantMatcherNew.group(1).trim().toLowerCase();
+    String romanLevel = enchantMatcherNew.group(2); // I, II, III, etc.
 
-    String enchId = enchantMatcherNew.group(1).trim().toLowerCase(); // e.g., unbr
-    String levelStr = enchantMatcherNew.group(2);
-
-    if (levelStr != null) {
-        levelStr = levelStr.trim();
-
-        // Convert Roman numerals to numbers if needed
-        if (levelStr.matches("[IVXLCDM]+")) {
-            levelStr = String.valueOf(romanToInt(levelStr));
-        }
-        // Otherwise levelStr is already a digit (1-6)
-    } else {
-        levelStr = ""; // Infinity / no-level enchants
+    String numericLevel = "";
+    if (romanLevel != null) {
+        numericLevel = String.valueOf(romanToInt(romanLevel));
     }
 
-    String shortEnchant = enchId + levelStr; // e.g., unbr2, unbr3
-    String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
+    String shortEnchant = enchId + numericLevel; // unbr2, unbr3, etc.
+    
+    // Map only the base name (without level) to short alias
+    String mappedBase = EnchantMapper.mapEnchant(enchId, true); // still returns "unbr"
+    
+    String mappedEnchant = mappedBase + numericLevel; // append numeric level manually
 
     if (!enchantBuilder.isEmpty()) {
         enchantBuilder.append(",");
