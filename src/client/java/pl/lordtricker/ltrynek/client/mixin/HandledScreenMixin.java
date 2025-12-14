@@ -69,7 +69,7 @@ public abstract class HandledScreenMixin {
 	}
 
 	private static final Pattern NEWER_PATTERN = Pattern.compile(
-			"([A-Z][a-z]+(?: [A-Z][a-z]+)?)\\s+([IVXLCDM]+)"
+			"^(?:§[0-9a-fk-or])*([A-Za-z ]+)\\s+([IVXLCDM]+)\\s*$"
 	);
 
 	private static final Pattern OLDER_PATTERN = Pattern.compile(
