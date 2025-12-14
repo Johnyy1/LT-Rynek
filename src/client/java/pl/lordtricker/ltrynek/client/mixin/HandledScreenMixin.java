@@ -69,7 +69,7 @@ public abstract class HandledScreenMixin {
 	}
 
 	private static final Pattern NEWER_PATTERN = Pattern.compile(
-			"ResourceKey\\[\\s*minecraft:enchantment\\s*/\\s*minecraft:([^\\]]+)\\]\\s*=Enchantment [^}]+}\\s*=>\\s*(\\d+)"
+			"([A-Za-z ]+)\\s+([IVXLCDM]+)"
 	);
 
 	private static final Pattern OLDER_PATTERN = Pattern.compile(
