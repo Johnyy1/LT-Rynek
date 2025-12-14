@@ -96,26 +96,45 @@ private boolean processSlot(DrawContext context, Slot slot) {
 
     // Extract enchantments from NBT (numeric levels)
     String rawEnchants = stack.getEnchantments().toString();
-    StringBuilder enchantBuilder = new StringBuilder();
+StringBuilder enchantBuilder = new StringBuilder();
 
-    // OLDER_PATTERN reliably extracts id + numeric level
-    Matcher enchantMatcher = OLDER_PATTERN.matcher(rawEnchants);
-    while (enchantMatcher.find()) {
-        String enchId = enchantMatcher.group(1).trim();
-        String levelStr = enchantMatcher.group(2).trim(); // numeric level
+// --- 1. OLD/NBT numeric enchants ---
+Matcher oldMatcher = OLDER_PATTERN.matcher(rawEnchants);
+while (oldMatcher.find()) {
+    String enchId = oldMatcher.group(1).trim();
+    String levelStr = oldMatcher.group(2).trim(); // numeric level
 
-        if (enchId.startsWith("minecraft:")) {
-            enchId = enchId.substring("minecraft:".length());
-        }
+    if (enchId.startsWith("minecraft:")) {
+        enchId = enchId.substring("minecraft:".length());
+    }
 
-        String mappedBase = EnchantMapper.mapEnchant(enchId, true); // e.g., "unbreaking" → "unbr"
-        String mappedEnchant = mappedBase + levelStr;               // "unbr2", "sharp5", etc.
+    String mappedBase = EnchantMapper.mapEnchant(enchId, true);
+    String mappedEnchant = mappedBase + levelStr;
 
-        if (enchantBuilder.length() > 0) {
-            enchantBuilder.append(",");
-        }
+    if (enchantBuilder.length() > 0) enchantBuilder.append(",");
+    enchantBuilder.append(mappedEnchant);
+}
+
+// --- 2. NEW/lore text for enchants with no numeric level ---
+Matcher newMatcher = NEWER_PATTERN.matcher(stack.getName().getString()); // or loop through loreLines if needed
+while (newMatcher.find()) {
+    String enchId = newMatcher.group(1).trim().toLowerCase();
+    String levelStr = newMatcher.group(2); // may be null
+
+    if (levelStr != null) {
+        levelStr = String.valueOf(romanToInt(levelStr));
+    } else {
+        levelStr = ""; // for Infinity / unbr without level
+    }
+
+    String mappedBase = EnchantMapper.mapEnchant(enchId, true);
+    String mappedEnchant = mappedBase + levelStr;
+
+    if (enchantBuilder.length() > 0 && !enchantBuilder.toString().contains(mappedEnchant)) {
+        enchantBuilder.append(",");
         enchantBuilder.append(mappedEnchant);
     }
+}
 
     String enchantmentsString = enchantBuilder.toString();
     if (!enchantmentsString.isEmpty()) {
