@@ -100,29 +100,36 @@ public class EnchantMapper {
      * @param post121   true dla wersji 1.21+, false dla starszych
      * @return skrócony alias enchantu z dołączonym poziomem (np. "prot2") lub "unknown", jeśli brak mapowania
      */
-    public static String mapEnchant(String shortName, boolean post121) {
-        String baseName = shortName.toLowerCase();
-        if (baseName.startsWith("minecraft:")) {
-            baseName = baseName.substring("minecraft:".length());
-        }
-        String levelPart = "";
-        int index = baseName.length() - 1;
-        while (index >= 0 && Character.isDigit(baseName.charAt(index))) {
-            index--;
-        }
-        if (index < baseName.length() - 1) {
-            levelPart = baseName.substring(index + 1);
-            baseName = baseName.substring(0, index + 1);
-        }
-        String mapped;
-        if (post121) {
-            mapped = post121Map.getOrDefault(baseName, "unknown");
-        } else {
-            mapped = pre120Map.getOrDefault(baseName, "unknown");
-        }
-        if (!mapped.equals("unknown") && !levelPart.isEmpty()) {
-            return mapped + levelPart;
-        }
-        return mapped;
+public static String mapEnchant(String shortName, boolean post121) {
+    String baseName = shortName.toLowerCase();
+    if (baseName.startsWith("minecraft:")) {
+        baseName = baseName.substring("minecraft:".length());
+    }
+
+    String levelPart = "";
+    int index = baseName.length() - 1;
+    while (index >= 0 && Character.isDigit(baseName.charAt(index))) {
+        index--;
+    }
+    if (index < baseName.length() - 1) {
+        levelPart = baseName.substring(index + 1);
+        baseName = baseName.substring(0, index + 1);
+    }
+
+    // Map the base name only
+    String mapped;
+    if (post121) {
+        mapped = post121Map.getOrDefault(baseName, "unknown");
+    } else {
+        mapped = pre120Map.getOrDefault(baseName, "unknown");
+    }
+
+    // **Always append numeric level if present**
+    if (!mapped.equals("unknown") && !levelPart.isEmpty()) {
+        return mapped + levelPart;
+    } else if (!mapped.equals("unknown")) {
+        return mapped; // for Infinity/no level
+    } else {
+        return shortName; // fallback to original if unknown
     }
 }
