@@ -101,6 +101,8 @@ public class EnchantMapper {
      * @return skrócony alias enchantu z dołączonym poziomem (np. "prot2") lub "unknown", jeśli brak mapowania
      */
 public static String mapEnchant(String shortName, boolean post121) {
+    if (shortName == null || shortName.isEmpty()) return "unknown";
+
     String baseName = shortName.toLowerCase();
     if (baseName.startsWith("minecraft:")) {
         baseName = baseName.substring("minecraft:".length());
@@ -108,23 +110,27 @@ public static String mapEnchant(String shortName, boolean post121) {
 
     String levelPart = "";
     int index = baseName.length() - 1;
+
+    // Extract trailing digits as level
     while (index >= 0 && Character.isDigit(baseName.charAt(index))) {
         index--;
     }
+
     if (index < baseName.length() - 1) {
         levelPart = baseName.substring(index + 1);
         baseName = baseName.substring(0, index + 1);
     }
 
+    // Map base enchant
     String mapped;
     if (post121) {
-        mapped = post121Map.getOrDefault(baseName, "unknown");
+        mapped = post121Map.get(baseName);
     } else {
-        mapped = pre120Map.getOrDefault(baseName, "unknown");
+        mapped = pre120Map.get(baseName);
     }
 
-    // Always append numeric level if present
-    if (!mapped.equals("unknown")) {
+    // If mapped, append level if exists
+    if (mapped != null) {
         if (!levelPart.isEmpty()) {
             return mapped + levelPart;
         } else {
@@ -132,6 +138,6 @@ public static String mapEnchant(String shortName, boolean post121) {
         }
     }
 
-    // fallback to original if unknown
+    // fallback to original shortName if unknown
     return shortName;
 }
