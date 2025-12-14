@@ -69,7 +69,7 @@ public abstract class HandledScreenMixin {
 	}
 
 	private static final Pattern NEWER_PATTERN = Pattern.compile(
-			"(?:§[0-9a-fk-or])*([A-Za-z ]+)(?:\\s+([IVXLCDM]+))?"
+			"(?:§[0-9a-fk-or])*([A-Za-z ]+)(?:\\s+(I|II|III|IV|V|VI))?"
 	);
 
 	private static final Pattern OLDER_PATTERN = Pattern.compile(
@@ -103,24 +103,25 @@ public abstract class HandledScreenMixin {
 while (enchantMatcherNew.find()) {
     foundAny = true;
 
-    // Enchantment name
     String enchId = enchantMatcherNew.group(1).trim();
-
-    // Level may be null
     String levelStr = enchantMatcherNew.group(2);
+
+    // Handle optional levels
     if (levelStr != null) {
         levelStr = levelStr.trim();
+
+        // Convert Roman numerals to numbers if needed
+        if (levelStr.matches("[IVXLCDM]+")) {
+            levelStr = String.valueOf(romanToInt(levelStr));
+        }
+
     } else {
-        levelStr = ""; // Or "1" if you want default numeric level
+        levelStr = ""; // For Infinity / no-level enchants
     }
 
-    // Concatenate for mapping
     String shortEnchant = enchId + levelStr;
-
-    // Map enchant
     String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
 
-    // Append to builder
     if (!enchantBuilder.isEmpty()) {
         enchantBuilder.append(",");
     }
@@ -128,21 +129,26 @@ while (enchantMatcherNew.find()) {
 }
 
 		if (!foundAny) {
-			Matcher enchantMatcherOld = OLDER_PATTERN.matcher(rawEnchants);
-			while (enchantMatcherOld.find()) {
-				String enchId = enchantMatcherOld.group(1).trim();
-				String levelStr = enchantMatcherOld.group(2).trim();
-				if (enchId.startsWith("minecraft:")) {
-					enchId = enchId.substring("minecraft:".length());
-				}
-				String shortEnchant = enchId + levelStr;
-				String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, false);
-				if (enchantBuilder.length() > 0) {
-					enchantBuilder.append(",");
-				}
-				enchantBuilder.append(mappedEnchant);
-			}
+while (enchantMatcherNew.find()) {
+    String enchId = enchantMatcherNew.group(1).trim();
+    String levelStr = enchantMatcherNew.group(2);
+
+    if (levelStr != null) {
+        levelStr = String.valueOf(romanToInt(levelStr));
+    } else {
+        levelStr = ""; // For Infinity
+    }
+
+    String shortEnchant = enchId + levelStr;
+    String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
+
+    if (!enchantBuilder.isEmpty()) {
+        enchantBuilder.append(",");
+    }
+    enchantBuilder.append(mappedEnchant);
+}
 		}
+		
 
 		String enchantmentsString = enchantBuilder.toString();
 		if (!enchantmentsString.isEmpty()) {
@@ -219,6 +225,19 @@ while (enchantMatcherNew.find()) {
 
 		return false;
 	}
+
+private static int romanToInt(String s) {
+    if (s == null) return 0;
+    return switch (s.toUpperCase()) {
+        case "I" -> 1;
+        case "II" -> 2;
+        case "III" -> 3;
+        case "IV" -> 4;
+        case "V" -> 5;
+        case "VI" -> 6;
+        default -> 0; // fallback
+    };
+}
 
 
 	private void playAlarmSound(int matchedCount) {
