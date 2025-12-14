@@ -77,137 +77,149 @@ private static final Pattern NEWER_PATTERN = Pattern.compile(
 			"\\{id:\"([^\"]+)\",lvl:(\\d+)s\\}"
 	);
 
-private boolean processSlot(DrawContext context, Slot slot) {
-    ItemStack stack = slot.getStack();
-    if (stack.isEmpty()) return false;
+	private boolean processSlot(DrawContext context, Slot slot) {
+		ItemStack stack = slot.getStack();
+		if (stack.isEmpty()) return false;
 
-    String displayName = stack.getName().getString();
-    String noColorName = ColorStripUtils.stripAllColorsAndFormats(displayName);
+		String displayName = stack.getName().getString();
+		String noColorName = ColorStripUtils.stripAllColorsAndFormats(displayName);
 
-    // Extract lore lines
-    List<Text> tooltip = stack.getTooltip(Item.TooltipContext.DEFAULT, null, TooltipType.BASIC);
-    List<String> loreLines = new ArrayList<>();
-    for (int i = 1; i < tooltip.size(); i++) { // skip first line (item name)
-        Text textLine = tooltip.get(i);
-        String plain = textLine.getString();
-        String noColor = ColorStripUtils.stripAllColorsAndFormats(plain);
-        loreLines.add(noColor);
+		List<Text> tooltip = stack.getTooltip(Item.TooltipContext.DEFAULT, null, TooltipType.BASIC);
+		List<String> loreLines = new ArrayList<>();
+		for (int i = 0; i < tooltip.size(); i++) {
+			// Skip the first line which is the item name; we only want lore
+			if (i == 0) continue;
+			Text textLine = tooltip.get(i);
+			String plain = textLine.getString();
+			String noColor = ColorStripUtils.stripAllColorsAndFormats(plain);
+			loreLines.add(noColor);
+		}
+
+		String rawEnchants = stack.getEnchantments().toString();
+
+		Matcher enchantMatcherNew = NEWER_PATTERN.matcher(rawEnchants);
+		StringBuilder enchantBuilder = new StringBuilder();
+		boolean foundAny = false;
+
+while (enchantMatcherNew.find()) {
+    String enchId = enchantMatcherNew.group(1).trim().toLowerCase();
+    String romanLevel = enchantMatcherNew.group(2); // I, II, III, etc.
+
+    String numericLevel = "";
+    if (romanLevel != null) {
+        numericLevel = String.valueOf(romanToInt(romanLevel));
     }
 
-    // Extract enchantments from NBT (numeric levels)
-    String rawEnchants = stack.getEnchantments().toString();
-StringBuilder enchantBuilder = new StringBuilder();
+    String shortEnchant = enchId + numericLevel; // unbr2, unbr3, etc.
+    
+    // Map only the base name (without level) to short alias
+    String mappedBase = EnchantMapper.mapEnchant(enchId, true); // still returns "unbr"
+    
+    String mappedEnchant = mappedBase + numericLevel; // append numeric level manually
 
-// --- 1. OLD/NBT numeric enchants ---
-Matcher oldMatcher = OLDER_PATTERN.matcher(rawEnchants);
-while (oldMatcher.find()) {
-    String enchId = oldMatcher.group(1).trim();
-    String levelStr = oldMatcher.group(2).trim(); // numeric level
-
-    if (enchId.startsWith("minecraft:")) {
-        enchId = enchId.substring("minecraft:".length());
+    if (!enchantBuilder.isEmpty()) {
+        enchantBuilder.append(",");
     }
-
-    String mappedBase = EnchantMapper.mapEnchant(enchId, true);
-    String mappedEnchant = mappedBase + levelStr;
-
-    if (enchantBuilder.length() > 0) enchantBuilder.append(",");
     enchantBuilder.append(mappedEnchant);
 }
 
-// --- 2. NEW/lore text for enchants with no numeric level ---
-Matcher newMatcher = NEWER_PATTERN.matcher(stack.getName().getString()); // or loop through loreLines if needed
-while (newMatcher.find()) {
-    String enchId = newMatcher.group(1).trim().toLowerCase();
-    String levelStr = newMatcher.group(2); // may be null
+		if (!foundAny) {
+while (enchantMatcherNew.find()) {
+    String enchId = enchantMatcherNew.group(1).trim();
+    String levelStr = enchantMatcherNew.group(2);
 
     if (levelStr != null) {
         levelStr = String.valueOf(romanToInt(levelStr));
     } else {
-        levelStr = ""; // for Infinity / unbr without level
+        levelStr = ""; // For Infinity
     }
 
-    String mappedBase = EnchantMapper.mapEnchant(enchId, true);
-    String mappedEnchant = mappedBase + levelStr;
+    String shortEnchant = enchId + levelStr;
+    String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
 
-    if (enchantBuilder.length() > 0 && !enchantBuilder.toString().contains(mappedEnchant)) {
+    if (!enchantBuilder.isEmpty()) {
         enchantBuilder.append(",");
-        enchantBuilder.append(mappedEnchant);
     }
+    enchantBuilder.append(mappedEnchant);
 }
+		}
+		
 
-    String enchantmentsString = enchantBuilder.toString();
-    if (!enchantmentsString.isEmpty()) {
-        loreLines.add(enchantmentsString); // append to lore lines for price matching
-    }
+		String enchantmentsString = enchantBuilder.toString();
+		if (!enchantmentsString.isEmpty()) {
+			loreLines.add(enchantmentsString);
+		}
 
-    // --- PRICE AND COLOR LOGIC (unchanged) ---
-    String activeProfile = ClientPriceListManager.getActiveProfile();
-    ServerEntry entry = findServerEntryByProfile(activeProfile);
-    if (entry == null) return false;
 
-    String loreRegex = entry.loreRegex;
-    String colorStr = entry.highlightColor;
-    String colorStackStr = (entry.highlightColorStack == null || entry.highlightColorStack.isEmpty())
-            ? colorStr
-            : entry.highlightColorStack;
-    int highlightColor = parseColor(colorStr);
-    int highlightColorStack = parseColor(colorStackStr);
+		String activeProfile = ClientPriceListManager.getActiveProfile();
+		ServerEntry entry = findServerEntryByProfile(activeProfile);
+		if (entry == null) return false;
 
-    double foundPrice = -1;
-    Pattern pattern = Pattern.compile(loreRegex);
-    for (String plain : loreLines) {
-        Matcher m = pattern.matcher(plain);
-        if (m.find()) {
-            String priceGroup = m.group(1);
-            double parsedPrice = parsePriceWithSuffix(priceGroup);
-            if (parsedPrice >= 0) {
-                foundPrice = parsedPrice;
-                break;
-            }
-        }
-    }
-    if (foundPrice < 0) return false;
+		String loreRegex = entry.loreRegex;
+		String colorStr = entry.highlightColor;
+		String colorStackStr = (entry.highlightColorStack == null || entry.highlightColorStack.isEmpty())
+				? colorStr
+				: entry.highlightColorStack;
+		int highlightColor = parseColor(colorStr);
+		int highlightColorStack = parseColor(colorStackStr);
 
-    Identifier id = Registries.ITEM.getId(stack.getItem());
-    String materialId = id.toString();
-    int stackSize = stack.getCount();
-    boolean isStack = stackSize > 1;
-    double finalPrice = foundPrice;
+		double foundPrice = -1;
+		Pattern pattern = Pattern.compile(loreRegex);
+		for (String plain : loreLines) {
+			Matcher m = pattern.matcher(plain);
+			if (m.find()) {
+				String priceGroup = m.group(1);
+				double parsedPrice = parsePriceWithSuffix(priceGroup);
+				if (parsedPrice >= 0) {
+					foundPrice = parsedPrice;
+					break;
+				}
+			}
+		}
+		if (foundPrice < 0) return false;
 
-    if (ClientSearchListManager.isSearchActive()) {
-        String uniqueKey = slot.id + "|" + noColorName + "|" + finalPrice + "|" + stackSize;
-        if (!ClientSearchListManager.isAlreadyCounted(uniqueKey)) {
-            ClientSearchListManager.markAsCounted(uniqueKey);
-            for (String compositeKey : ClientSearchListManager.getSearchList()) {
-                if (ClientSearchListManager.matchesSearchTerm(compositeKey, noColorName, loreLines, materialId, enchantmentsString)) {
-                    ClientSearchListManager.updateStats(compositeKey, finalPrice, stackSize);
-                }
-            }
-        }
-    }
+		Identifier id = Registries.ITEM.getId(stack.getItem());
+		String materialId = id.toString();
 
-    PriceEntry matchedEntry = ClientPriceListManager.findMatchingPriceEntry(noColorName, loreLines, materialId, enchantmentsString);
-    if (matchedEntry == null) return false;
+		int stackSize = stack.getCount();
+		boolean isStack = stackSize > 1;
+		double finalPrice = foundPrice;
 
-    double maxPrice = matchedEntry.maxPrice;
-    if (finalPrice <= maxPrice) {
-        double ratio = finalPrice / maxPrice;
-        if (ratio > 1.0) ratio = 1.0;
-        double alphaF = 1.0 - 0.75 * ratio;
-        if (alphaF < 0.30) alphaF = 0.30;
-        int computedAlpha = (int) (alphaF * 255.0) & 0xFF;
-        int baseRGB = isStack ? (highlightColorStack & 0x00FFFFFF) : (highlightColor & 0x00FFFFFF);
-        int dynamicColor = (computedAlpha << 24) | baseRGB;
+		if (ClientSearchListManager.isSearchActive()) {
+			String uniqueKey = slot.id + "|" + noColorName + "|" + finalPrice + "|" + stackSize;
+			if (!ClientSearchListManager.isAlreadyCounted(uniqueKey)) {
+				ClientSearchListManager.markAsCounted(uniqueKey);
+				for (String compositeKey : ClientSearchListManager.getSearchList()) {
+					if (ClientSearchListManager.matchesSearchTerm(compositeKey, noColorName, loreLines, materialId, enchantmentsString)) {
+						ClientSearchListManager.updateStats(compositeKey, finalPrice, stackSize);
+					}
+				}
+			}
+		}
 
-        int realX = this.x + slot.x;
-        int realY = this.y + slot.y;
-        context.fill(realX, realY, realX + 16, realY + 16, dynamicColor);
-        return true;
-    }
+		PriceEntry matchedEntry = ClientPriceListManager.findMatchingPriceEntry(noColorName, loreLines, materialId, enchantmentsString);
+		if (matchedEntry == null) {
+			return false;
+		}
 
-    return false;
-}
+		double maxPrice = matchedEntry.maxPrice;
+		if (finalPrice <= maxPrice) {
+			double ratio = finalPrice / maxPrice;
+			if (ratio > 1.0) ratio = 1.0;
+			double alphaF = 1.0 - 0.75 * ratio;
+			if (alphaF < 0.30) alphaF = 0.30;
+			int computedAlpha = (int) (alphaF * 255.0) & 0xFF;
+			int baseRGB = isStack ? (highlightColorStack & 0x00FFFFFF) : (highlightColor & 0x00FFFFFF);
+			int dynamicColor = (computedAlpha << 24) | baseRGB;
+
+			int realX = this.x + slot.x;
+			int realY = this.y + slot.y;
+			context.fill(realX, realY, realX + 16, realY + 16, dynamicColor);
+			return true;
+		}
+
+		return false;
+	}
 
 private static int romanToInt(String s) {
     if (s == null) return 0;
@@ -221,6 +233,7 @@ private static int romanToInt(String s) {
         default -> 0; // fallback
     };
 }
+
 
 	private void playAlarmSound(int matchedCount) {
 		String activeProfile = ClientPriceListManager.getActiveProfile();
