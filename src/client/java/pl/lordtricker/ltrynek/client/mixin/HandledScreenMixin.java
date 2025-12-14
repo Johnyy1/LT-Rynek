@@ -117,6 +117,11 @@ while (enchantMatcherNew.find()) {
 
     String shortEnchant = enchId + levelStr; // e.g., unbr2, unbr3
     String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
+
+    if (!enchantBuilder.isEmpty()) {
+        enchantBuilder.append(",");
+    }
+    enchantBuilder.append(mappedEnchant);
 }
 
     if (!enchantBuilder.isEmpty()) {
