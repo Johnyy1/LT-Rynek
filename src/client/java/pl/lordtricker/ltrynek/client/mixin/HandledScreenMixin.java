@@ -100,17 +100,32 @@ public abstract class HandledScreenMixin {
 		StringBuilder enchantBuilder = new StringBuilder();
 		boolean foundAny = false;
 
-		while (enchantMatcherNew.find()) {
-			foundAny = true;
-			String enchId = enchantMatcherNew.group(1).trim();
-			String levelStr = enchantMatcherNew.group(2).trim();
-			String shortEnchant = enchId + levelStr;
-			String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
-			if (!enchantBuilder.isEmpty()) {
-				enchantBuilder.append(",");
-			}
-			enchantBuilder.append(mappedEnchant);
-		}
+while (enchantMatcherNew.find()) {
+    foundAny = true;
+
+    // Enchantment name
+    String enchId = enchantMatcherNew.group(1).trim();
+
+    // Level may be null
+    String levelStr = enchantMatcherNew.group(2);
+    if (levelStr != null) {
+        levelStr = levelStr.trim();
+    } else {
+        levelStr = ""; // Or "1" if you want default numeric level
+    }
+
+    // Concatenate for mapping
+    String shortEnchant = enchId + levelStr;
+
+    // Map enchant
+    String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
+
+    // Append to builder
+    if (!enchantBuilder.isEmpty()) {
+        enchantBuilder.append(",");
+    }
+    enchantBuilder.append(mappedEnchant);
+}
 
 		if (!foundAny) {
 			Matcher enchantMatcherOld = OLDER_PATTERN.matcher(rawEnchants);
