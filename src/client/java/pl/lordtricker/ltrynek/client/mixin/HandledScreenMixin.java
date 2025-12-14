@@ -69,7 +69,8 @@ public abstract class HandledScreenMixin {
 	}
 
 	private static final Pattern NEWER_PATTERN = Pattern.compile(
-			"(?:§[0-9a-fk-or])*([A-Za-z ]+)(?:\\s+(I|II|III|IV|V|VI))?"
+	    "(?:§[0-9a-fk-or])*([A-Za-z ]+)(?:\\s+([IV]+|[1-6]))?", // group 2: I–VI OR 1–6
+	    Pattern.CASE_INSENSITIVE
 	);
 
 	private static final Pattern OLDER_PATTERN = Pattern.compile(
@@ -101,26 +102,22 @@ public abstract class HandledScreenMixin {
 		boolean foundAny = false;
 
 while (enchantMatcherNew.find()) {
-    foundAny = true;
-
     String enchId = enchantMatcherNew.group(1).trim();
     String levelStr = enchantMatcherNew.group(2);
 
-    // Handle optional levels
     if (levelStr != null) {
-        levelStr = levelStr.trim();
-
-        // Convert Roman numerals to numbers if needed
-        if (levelStr.matches("[IVXLCDM]+")) {
+        // Roman numerals → digits
+        if (levelStr.matches("[IV]+")) {
             levelStr = String.valueOf(romanToInt(levelStr));
         }
-
+        // Otherwise, already a digit (1–6)
     } else {
-        levelStr = ""; // For Infinity / no-level enchants
+        levelStr = ""; // Infinity
     }
 
-    String shortEnchant = enchId + levelStr;
+    String shortEnchant = enchId + levelStr; // e.g., unbr2, unbr3
     String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
+}
 
     if (!enchantBuilder.isEmpty()) {
         enchantBuilder.append(",");
