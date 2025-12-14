@@ -68,9 +68,10 @@ public abstract class HandledScreenMixin {
 		lastMatchedCount = matchedCount;
 	}
 
-	private static final Pattern NEWER_PATTERN = Pattern.compile(
-			"(?:§[0-9a-fk-or])*([A-Za-z ]+)(?:\\s+(I|II|III|IV|V|VI))?"
-	);
+private static final Pattern NEWER_PATTERN = Pattern.compile(
+    "(?:§[0-9a-fk-or])*([A-Za-z_]+)(?:\\s+(I|II|III|IV|V|VI|[1-6]))?",
+    Pattern.CASE_INSENSITIVE
+);
 
 	private static final Pattern OLDER_PATTERN = Pattern.compile(
 			"\\{id:\"([^\"]+)\",lvl:(\\d+)s\\}"
@@ -103,10 +104,9 @@ public abstract class HandledScreenMixin {
 while (enchantMatcherNew.find()) {
     foundAny = true;
 
-    String enchId = enchantMatcherNew.group(1).trim();
+    String enchId = enchantMatcherNew.group(1).trim().toLowerCase(); // e.g., unbr
     String levelStr = enchantMatcherNew.group(2);
 
-    // Handle optional levels
     if (levelStr != null) {
         levelStr = levelStr.trim();
 
@@ -114,12 +114,12 @@ while (enchantMatcherNew.find()) {
         if (levelStr.matches("[IVXLCDM]+")) {
             levelStr = String.valueOf(romanToInt(levelStr));
         }
-
+        // Otherwise levelStr is already a digit (1-6)
     } else {
-        levelStr = ""; // For Infinity / no-level enchants
+        levelStr = ""; // Infinity / no-level enchants
     }
 
-    String shortEnchant = enchId + levelStr;
+    String shortEnchant = enchId + levelStr; // e.g., unbr2, unbr3
     String mappedEnchant = EnchantMapper.mapEnchant(shortEnchant, true);
 
     if (!enchantBuilder.isEmpty()) {
